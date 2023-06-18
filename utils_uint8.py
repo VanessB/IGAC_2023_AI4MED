@@ -16,7 +16,7 @@ def find_contours(mask: np.array) -> np.array:
     """
     
     kernel   = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (11,11))
-    morphed  = cv2.morphologyEx(mask.astype(np.uint8), cv2.MORPH_CLOSE, kernel)
+    morphed  = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     contours = cv2.findContours(morphed, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     return contours[-2]
 
@@ -35,7 +35,7 @@ def mask_from_contours(ref_img: np.array, contours: list) -> np.array:
     
     mask = np.zeros(ref_img.shape, np.uint8)
     for contour in contours:
-        mask = cv2.drawContours(mask, [contour], -1, (1,1,1), -1)
+        mask = cv2.drawContours(mask, [contour], -1, (255,255,255), -1)
         
     return mask
 
@@ -59,7 +59,7 @@ def convex_hull_from_mask(mask: np.array) -> np.array:
 
 
 
-def get_brain_mask(image: np.array, bone_treshold: float=0.6, void_treshold: float=0.0,
+def get_brain_mask(image: np.array, bone_treshold: int=153, void_treshold: int=0,
                    bone_dilate_size: int=8, void_opening_size: int=10, void_dilate_size: int=10,
                    insides_opening_size: int=40, use_bone_convex_hull: bool=True, return_all: bool=False) -> np.array:
     """
@@ -69,9 +69,9 @@ def get_brain_mask(image: np.array, bone_treshold: float=0.6, void_treshold: flo
     ---------
     image : np.array
         Изображение.
-    bone_treshold : float
+    bone_treshold : int
         Порог детекции кости.
-    void_treshold : float
+    void_treshold : int
         Порог детекции пустоты.
     bone_dilate_size : int
         Число пикселей, на которое расширяется маска кости.
@@ -86,18 +86,18 @@ def get_brain_mask(image: np.array, bone_treshold: float=0.6, void_treshold: flo
     """
     
     # Выделение кости по порогу.
-    _, mask_bone = cv2.threshold(image, bone_treshold, 1.0, cv2.THRESH_BINARY)
+    _, mask_bone = cv2.threshold(image, bone_treshold, 255, cv2.THRESH_BINARY)
     
     # Расширение на соседние пикселы.
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (bone_dilate_size, bone_dilate_size))
-    mask_bone = cv2.dilate(mask_bone, kernel, iterations=1)
+    mask_bone = cv2.dilate(mask_bone, kernel)
     
     # Выделение пустоты по порогу.
-    _, mask_void = cv2.threshold(image, void_treshold, 1.0, cv2.THRESH_BINARY_INV)
+    _, mask_void = cv2.threshold(image, void_treshold, 255, cv2.THRESH_BINARY_INV)
     
     # Удаение шума.
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    mask_void = cv2.dilate(mask_void, kernel, iterations=1)
+    mask_void = cv2.dilate(mask_void, kernel)
     
     # Удаление кусков размера меньше void_opening_size.
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (void_opening_size, void_opening_size))
@@ -116,7 +116,7 @@ def get_brain_mask(image: np.array, bone_treshold: float=0.6, void_treshold: flo
     mask_void = np.maximum(mask_void, mask_big_void)
     
     # Совмещение масок.
-    mask = 1.0 - np.maximum(mask_bone, mask_void)
+    mask = 255 - np.maximum(mask_bone, mask_void)
     
     if use_bone_convex_hull:
         # Выпуклая оболочка кости.
@@ -131,82 +131,3 @@ def get_brain_mask(image: np.array, bone_treshold: float=0.6, void_treshold: flo
         return mask, mask_bone, mask_void
     else:
         return mask
-
-
-def get_baseline_mask(image: np.array, min_treshold: float=0.17, max_treshold: float=0.4) -> np.array:
-    """
-    Базовое решение.
-    
-    Параметры
-    ---------
-    image : np.array
-        Изображение.
-    min_treshold : float
-        Нижний порог обрезки кровоизлияния.
-    max_treshold : float
-        Верхний порог обрезки кровоизлияния.
-    """
-    
-    # Выделение средних по интенсивности пикселей.
-    _, mask_min = cv2.threshold(image, min_treshold, 1.0, cv2.THRESH_BINARY)
-    _, mask_max = cv2.threshold(image, max_treshold, 1.0, cv2.THRESH_BINARY_INV)
-    mask = np.minimum(mask_min, mask_max)
-    
-    # Выделение кости.
-    bone_treshold = 0.4
-    kernel_size = 10
-    
-    _, mask_bone = cv2.threshold(image, bone_treshold, 1.0, cv2.THRESH_BINARY)
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (kernel_size, kernel_size))
-    mask_bone = cv2.dilate(mask_bone, kernel, iterations=1)
-    
-    # Выделение внешнего пространства.
-    void_treshold = 0.02
-    erode_kernel_size = 10
-    dilate_kernel_size = 50
-    
-    _, mask_void = cv2.threshold(image, void_treshold, 1.0, cv2.THRESH_BINARY_INV)
-    
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (erode_kernel_size, erode_kernel_size))
-    mask_void = cv2.erode(mask_void, kernel, iterations=1)
-    
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_kernel_size, dilate_kernel_size))
-    mask_void = cv2.dilate(mask_void, kernel, iterations=1)
-    
-    # Обрезка всего, что не касается мозга.
-    mask_cut = np.maximum(mask_bone, mask_void)
-    mask[mask_cut > 0.0] = 0.0
-    
-    # Удаление мелких деталей.
-    erode_kernel_size = 6
-    dilate_kernel_size = 7
-    
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (erode_kernel_size, erode_kernel_size))
-    mask = cv2.erode(mask, kernel, iterations=1)
-    
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (dilate_kernel_size, dilate_kernel_size))
-    mask = cv2.dilate(mask, kernel, iterations=1)
-    
-    return mask
-
-
-def plot_with_mask(image: np.array, mask: np.array, size: float=8) -> None:
-    """
-    Вывести подряд избражение и маску.
-    
-    Параметры
-    ---------
-    image : np.array
-        Изображение.
-    mask : np.array
-        Макска.
-    size : float, optional
-        Размер изображения.
-    """
-    
-    fig, axes = plt.subplots(1, 2, figsize=(2*size, size))
-    
-    axes[0].imshow(image)
-    axes[1].imshow(np.maximum(image, mask))
-    
-    plt.show()
