@@ -44,6 +44,4 @@ def find_best_treshold(array: np.array, criterion: callable) -> float:
     unique = np.append(np.unique(array), array[-1] + 1)
     
     criterion_values = np.array([criterion(array, treshold) for treshold in unique])
-    #print(unique)
-    #print(criterion_values)
     return unique[np.argmin(criterion_values)]
