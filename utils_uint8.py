@@ -126,6 +126,7 @@ def get_brain_mask(image: np.array, bone_treshold: int=153, void_treshold: int=0
     # Удаление мелких деталей.
     kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (insides_opening_size, insides_opening_size))
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+    #mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
     
     if return_all:
         return mask, mask_bone, mask_void

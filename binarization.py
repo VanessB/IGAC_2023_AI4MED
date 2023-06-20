@@ -1,6 +1,14 @@
 import numpy as np
 
 
+def clamp(value, minimum, maximum):
+    """
+    Обрезка числа по заданному верхнему и нижниму порогу.
+    """
+    
+    return max(minimum, min(maximum, value))
+
+
 def Otsu_criterion(array: np.array, treshold: float) -> float:
     """
     Критерий Otsu качества разбиения массива чисел на две части.
