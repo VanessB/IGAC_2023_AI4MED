@@ -8,7 +8,7 @@
 - [`Baseline.ipynb`](./Baseline.ipynb) - демонстрация базового решения.
 - [`CheckBrainMask.ipynb`](./CheckBrainMask.ipynb) - визуальная проверка качества выделения мозга.
 - [`ImprovedBaseline.ipynb`](./ImprovedBaseline.ipynb) - улучшенное базовое решение.
-- [`ConnectedComponents.ipynb`](./ConnectedComponents.ipynb) - решение, основанное на анализе компонент связности (используется для генерации посылок).
+- [`ConnectedComponents.ipynb`](./ConnectedComponents.ipynb) - решение, основанное на анализе компонент связности **(используется для генерации посылок)**.
 - [`ConnectedComponentsLite.ipynb`](./ConnectedComponentsLite.ipynb) - облегченная версия решения, основанного на анализе компонент связности.
 
 ## Зависимости
